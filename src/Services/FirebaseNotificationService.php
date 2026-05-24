@@ -130,4 +130,138 @@ class FirebaseNotificationService
 
         return $this->sendFirebaseRequest($headers, $payload);
     }
+
+    public function sendNotificationWithImage(
+        string $deviceToken,
+        string $title,
+        string $body,
+        string $imageUrl
+    ) {
+        $accessToken = $this->getAccessToken();
+
+        $headers = [
+            "Authorization" => "Bearer $accessToken",
+            "Content-Type" => "application/json",
+        ];
+
+        $payload = [
+            "message" => [
+                "token" => $deviceToken,
+
+                "notification" => [
+                    "title" => $title,
+                    "body"  => $body,
+                ],
+
+                "data" => [
+                    "image" => $imageUrl,
+                ],
+
+                "android" => [
+                    "notification" => [
+                        "image" => $imageUrl,
+                        "sound" => "default",
+                    ],
+                ],
+
+                "apns" => [
+                    "payload" => [
+                        "aps" => [
+                            "mutable-content" => 1,
+                            "sound" => "default",
+                        ],
+                    ],
+                    "fcm_options" => [
+                        "image" => $imageUrl,
+                    ],
+                ],
+            ],
+        ];
+
+        return $this->sendFirebaseRequest($headers, $payload);
+    }
+
+    public function sendNotificationWithImageToAll(
+        Model $model,
+        string $title,
+        string $body,
+        string $imageUrl,
+        string $tokenColumn = 'fcm_token'
+    ) {
+        $users = $this->repository->getAllUsersWithTokens($model, $tokenColumn);
+
+        if ($users->isEmpty()) {
+            return [
+                'success' => false,
+                'message' => 'No users with valid FCM tokens found.'
+            ];
+        }
+
+        foreach ($users as $user) {
+            if (!empty($user->$tokenColumn)) {
+
+                $this->sendNotificationWithImage(
+                    $user->$tokenColumn,
+                    $title,
+                    $body,
+                    $imageUrl
+                );
+            }
+        }
+
+        return [
+            'success' => true,
+            'message' => 'Notifications with images sent to all users.'
+        ];
+    }
+
+    public function sendNotificationWithImageToTopic(
+        string $topic,
+        string $title,
+        string $body,
+        string $imageUrl
+    ) {
+        $accessToken = $this->getAccessToken();
+
+        $headers = [
+            "Authorization" => "Bearer $accessToken",
+            "Content-Type" => "application/json",
+        ];
+
+        $payload = [
+            "message" => [
+                "topic" => $topic,
+
+                "notification" => [
+                    "title" => $title,
+                    "body"  => $body,
+                ],
+
+                "data" => [
+                    "image" => $imageUrl,
+                ],
+
+                "android" => [
+                    "notification" => [
+                        "image" => $imageUrl,
+                        "sound" => "default",
+                    ],
+                ],
+
+                "apns" => [
+                    "payload" => [
+                        "aps" => [
+                            "mutable-content" => 1,
+                            "sound" => "default",
+                        ],
+                    ],
+                    "fcm_options" => [
+                        "image" => $imageUrl,
+                    ],
+                ],
+            ],
+        ];
+
+        return $this->sendFirebaseRequest($headers, $payload);
+    }
 }
