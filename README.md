@@ -114,6 +114,17 @@ $firebaseService->sendNotificationToTopic(
 );
 ```
 
+**4. Send a Notification with Custom Data (and optional Image):**
+```php
+$firebaseService->sendFirebaseWithData(
+    $deviceToken,                   // Target device token
+    "New Message",                  // Notification title
+    "You received a message!",      // Notification body
+    ['custom_key' => 'custom_val'], // Custom data payload (optional array)
+    "https://example.com/image.jpg" // Optional image URL (omit or null for none image)
+);
+```
+
 ### Laravel Troubleshooting
 
 - **Missing Credentials:**  

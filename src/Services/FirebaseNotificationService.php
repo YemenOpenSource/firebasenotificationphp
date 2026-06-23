@@ -264,4 +264,92 @@ class FirebaseNotificationService
 
         return $this->sendFirebaseRequest($headers, $payload);
     }
+
+    /**
+     * Send notification with custom data and optional image (supports both image and none-image).
+     *
+     * @param string $deviceToken
+     * @param string $title
+     * @param string $body
+     * @param array $data
+     * @param string|null $imageUrl
+     * @return array
+     */
+    public function sendFirebaseWithData(
+        string $deviceToken,
+        string $title,
+        string $body,
+        array $data = [],
+        ?string $imageUrl = null
+    ) {
+        $accessToken = $this->getAccessToken();
+
+        $headers = [
+            "Authorization" => "Bearer $accessToken",
+            "Content-Type" => "application/json",
+        ];
+
+        $formattedData = [];
+        foreach ($data as $key => $value) {
+            $formattedData[(string)$key] = (string)$value;
+        }
+
+        if (!empty($imageUrl)) {
+            $formattedData['image'] = $imageUrl;
+        }
+
+        $message = [
+            "token" => $deviceToken,
+            "notification" => [
+                "title" => $title,
+                "body"  => $body,
+            ],
+        ];
+
+        if (!empty($formattedData)) {
+            $message["data"] = $formattedData;
+        }
+
+        if (!empty($imageUrl)) {
+            $message["android"] = [
+                "notification" => [
+                    "image" => $imageUrl,
+                    "sound" => "default",
+                ],
+            ];
+
+            $message["apns"] = [
+                "payload" => [
+                    "aps" => [
+                        "mutable-content" => 1,
+                        "sound" => "default",
+                    ],
+                ],
+                "fcm_options" => [
+                    "image" => $imageUrl,
+                ],
+            ];
+        } else {
+            $message["android"] = [
+                "notification" => [
+                    "sound" => "default",
+                ],
+            ];
+
+            $message["apns"] = [
+                "payload" => [
+                    "aps" => [
+                        "sound" => "default",
+                    ],
+                ],
+            ];
+        }
+
+        $payload = [
+            "message" => $message,
+        ];
+
+        return $this->sendFirebaseRequest($headers, $payload);
+    }
 }
+
