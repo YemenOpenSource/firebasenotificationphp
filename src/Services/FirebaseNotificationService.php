@@ -2,7 +2,7 @@
 
 namespace SendFireBaseNotificationPHP\Services;
 
-use Google\Client as GoogleClient;
+use Firebase\JWT\JWT;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Database\Eloquent\Model;
 use SendFireBaseNotificationPHP\Repositories\FirebaseNotificationRepository;
@@ -24,18 +24,35 @@ class FirebaseNotificationService
 
     protected function getAccessToken(): string
     {
-        $client = new GoogleClient();
-        $client->setAuthConfig($this->credentialsFile);
-        $client->addScope('https://www.googleapis.com/auth/firebase.messaging');
-        $client->refreshTokenWithAssertion();
+        if (!is_readable($this->credentialsFile)) {
+            throw new \Exception('Firebase credentials file is missing or unreadable.');
+        }
 
-        $accessToken = $client->getAccessToken();
+        $credentials = json_decode(file_get_contents($this->credentialsFile), true);
 
-        if (!isset($accessToken['access_token'])) {
+        if (!is_array($credentials) || empty($credentials['client_email']) || empty($credentials['private_key'])) {
+            throw new \Exception('Invalid Firebase credentials file.');
+        }
+
+        $now = time();
+        $jwt = JWT::encode([
+            'iss' => $credentials['client_email'],
+            'scope' => 'https://www.googleapis.com/auth/firebase.messaging',
+            'aud' => 'https://oauth2.googleapis.com/token',
+            'iat' => $now,
+            'exp' => $now + 3600,
+        ], $credentials['private_key'], 'RS256');
+
+        $response = Http::asForm()->post('https://oauth2.googleapis.com/token', [
+            'grant_type' => 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+            'assertion' => $jwt,
+        ]);
+
+        if ($response->failed() || empty($response->json('access_token'))) {
             throw new \Exception('Failed to retrieve Firebase access token.');
         }
 
-        return $accessToken['access_token'];
+        return $response->json('access_token');
     }
 
     protected function sendFirebaseRequest(array $headers, array $payload)
